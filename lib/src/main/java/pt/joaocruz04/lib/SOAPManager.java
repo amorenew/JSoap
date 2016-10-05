@@ -2,19 +2,28 @@ package pt.joaocruz04.lib;
 
 import android.os.AsyncTask;
 import android.util.Log;
+
+import org.ksoap2.HeaderProperty;
 import org.ksoap2.SoapEnvelope;
-import org.ksoap2.serialization.*;
+import org.ksoap2.serialization.AttributeInfo;
+import org.ksoap2.serialization.PropertyInfo;
+import org.ksoap2.serialization.SoapObject;
+import org.ksoap2.serialization.SoapPrimitive;
+import org.ksoap2.serialization.SoapSerializationEnvelope;
 import org.ksoap2.transport.HttpTransportSE;
 import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xmlpull.v1.XmlPullParserException;
-import pt.joaocruz04.lib.annotations.JSoapAttribute;
-import pt.joaocruz04.lib.annotations.JSoapClass;
-import pt.joaocruz04.lib.annotations.JSoapReqField;
-import pt.joaocruz04.lib.misc.JSoapCallback;
-import pt.joaocruz04.lib.misc.JsoapError;
-import pt.joaocruz04.lib.misc.SoapDeserializer;
+
+import java.io.IOException;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -24,13 +33,13 @@ import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
-import java.io.IOException;
-import java.io.StringReader;
-import java.io.StringWriter;
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
+
+import pt.joaocruz04.lib.annotations.JSoapAttribute;
+import pt.joaocruz04.lib.annotations.JSoapClass;
+import pt.joaocruz04.lib.annotations.JSoapReqField;
+import pt.joaocruz04.lib.misc.JSoapCallback;
+import pt.joaocruz04.lib.misc.JsoapError;
+import pt.joaocruz04.lib.misc.SoapDeserializer;
 
 /**
  * Created by Joao Cruz on 16/12/14.
@@ -40,8 +49,7 @@ public class SOAPManager {
     private static final String TAG = "SOAPManager";
 
 
-
-    public static void get(final String namespace, final String url, final String methodName, final String soap_action, final Object obj, final Class outputClass, final JSoapCallback callback) {
+    public static void get(final String namespace, final String url, final List<HeaderProperty> headerPropertyList, final String methodName, final String soap_action, final Object obj, final Class outputClass, final JSoapCallback callback) {
 
         final ArrayList<ComparableProperty> parameters = extractProperties(obj);
         Collections.sort(parameters, new ComparablePropertyComparator());
@@ -64,7 +72,7 @@ public class SOAPManager {
                     envelope.setOutputSoapObject(request);
                     HttpTransportSE androidHttpTransport = new HttpTransportSE(url);
                     androidHttpTransport.debug = true;
-                    androidHttpTransport.call(soap_action, envelope);
+                    androidHttpTransport.call(soap_action, envelope, headerPropertyList);
 
                     String reqDump = prettyXML(androidHttpTransport.requestDump);
                     String resDump = prettyXML(androidHttpTransport.responseDump);
@@ -80,7 +88,7 @@ public class SOAPManager {
                     Object reslt = envelope.getResponse();
 
                     if (reslt == null) {
-                        callback.onSuccess((SoapObject) null);
+                        callback.onSuccess(null);
                         return null;
                     } else {
                         if (reslt.toString().equals("")) {
